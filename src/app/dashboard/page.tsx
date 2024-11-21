@@ -1,6 +1,8 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import LogoutButton from '@/components/logout-button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 
 export default async function DashboardPage() {
     const session = await auth()
@@ -10,21 +12,32 @@ export default async function DashboardPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-12">
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="bg-white rounded-lg shadow px-5 py-6 sm:px-6">
-                    <div className="flex justify-between items-center mb-6">
-                        <h1 className="text-2xl font-bold">Dashboard</h1>
-                        <LogoutButton />
-                    </div>
-                    <div className="space-y-4">
-                        <p className="text-gray-700">
-                            Hello, <span className="font-semibold">{session.user.name || 'User'}</span>!
-                        </p>
-                        <p className="text-gray-600">
-                            Your email: {session.user.email}
-                        </p>
-                    </div>
+        <div className=" bg-gray-50/50">
+            <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <div className="flex items-center justify-between py-2 px-6">
+                    <h1 className="font-bold text-lg">Dashboard</h1>
+                    <LogoutButton />
+                </div>
+            </header>
+
+            <main className="container p-6">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <Card className="shadow-none">
+                        <CardHeader>
+                            <CardTitle>Profile</CardTitle>
+                            <CardDescription>Your personal information</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid gap-2">
+                            <div className="flex items-center gap-2">
+                                <span className="font-medium">Name:</span>
+                                <span>{session.user.name || 'Not set'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-medium">Email:</span>
+                                <span>{session.user.email}</span>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </main>
         </div>

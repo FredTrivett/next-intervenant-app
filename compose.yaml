@@ -7,14 +7,18 @@ services:
     container_name: next-app
     ports:
       - "3000:3000"
+      - "5555:5555"
     volumes:
       - .:/app
       - /app/node_modules
+      - /app/.next
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/auth_db
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/auth_db?schema=public
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    command: sh -c "npx prisma migrate deploy && npx prisma generate && npm run dev"
 
   postgres:
     image: postgres:17
@@ -27,6 +31,11 @@ services:
       POSTGRES_DB: auth_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

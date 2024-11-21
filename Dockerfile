@@ -1,15 +1,23 @@
-# Étapes d'installation des dépendances
 FROM node:18-alpine
+
 WORKDIR /app
 
+# Install necessary tools
+RUN apk add --no-cache openssl
+
+# Install dependencies first
 COPY package*.json ./
 RUN npm install
 
-# Copier le dossier src
+# Copy prisma files
+COPY prisma ./prisma/
+
+# Copy the rest of the application
 COPY . .
 
-# Exposer le port utilisé par Next.js
+# Generate Prisma Client
+RUN npx prisma generate
+
 EXPOSE 3000
 
-# Démarrer le serveur en mode développement pour activer le hot reload
 CMD ["npm", "run", "dev"]
