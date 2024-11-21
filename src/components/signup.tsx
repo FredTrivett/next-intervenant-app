@@ -21,26 +21,17 @@ export default function SignUp() {
         const name = formData.get('name') as string
 
         try {
-            // First, create the user
             const response = await fetch('/api/auth/register', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email,
-                    password,
-                    name,
-                }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password, name }),
             })
 
-            const data = await response.json()
-
             if (!response.ok) {
-                throw new Error(data.message || 'Failed to create account')
+                const data = await response.json()
+                throw new Error(data.message || 'Registration failed')
             }
 
-            // If successful, sign in the user
             const result = await signIn('credentials', {
                 email,
                 password,
@@ -51,6 +42,7 @@ export default function SignUp() {
                 setError(result.error)
             } else {
                 router.push('/dashboard')
+                router.refresh()
             }
         } catch (error) {
             setError(error instanceof Error ? error.message : 'An error occurred')

@@ -1,23 +1,57 @@
 import NextAuth from "next-auth"
-import { authConfig } from "./auth.config"
+import type { NextAuthConfig } from "next-auth"
+import Credentials from "next-auth/providers/credentials"
 import { getUserFromDb } from "@/lib/password"
 
-export const { auth, handlers: { GET, POST }, signIn, signOut } = NextAuth({
-    ...authConfig,
+declare module 'next-auth' {
+    interface Session {
+        user: {
+            id: string
+            email: string
+            name?: string | null
+        }
+    }
+}
+
+const config: NextAuthConfig = {
+    pages: {
+        signIn: '/login',
+    },
+    callbacks: {
+        authorized({ auth, request: { nextUrl } }) {
+            const isLoggedIn = !!auth?.user
+            const isOnLogin = nextUrl.pathname.startsWith('/login')
+            const isOnDashboard = nextUrl.pathname.startsWith('/dashboard')
+
+            if (isOnLogin && isLoggedIn) {
+                return Response.redirect(new URL('/dashboard', nextUrl))
+            }
+
+            if (isOnDashboard && !isLoggedIn) {
+                return false
+            }
+
+            return true
+        },
+        async jwt({ token, user }) {
+            if (user) {
+                token.id = user.id
+                token.email = user.email
+                token.name = user.name
+            }
+            return token
+        },
+        async session({ session, token }) {
+            if (session.user) {
+                session.user.id = token.id as string
+                session.user.email = token.email as string
+                session.user.name = token.name as string | null
+            }
+            return session
+        }
+    },
     providers: [
-        {
-            id: "credentials",
-            name: "Credentials",
-            credentials: {
-                email: {
-                    label: "Email",
-                    type: "email",
-                },
-                password: {
-                    label: "Password",
-                    type: "password"
-                }
-            },
+        Credentials({
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) {
                     return null
@@ -25,8 +59,8 @@ export const { auth, handlers: { GET, POST }, signIn, signOut } = NextAuth({
 
                 try {
                     const user = await getUserFromDb(
-                        credentials.email,
-                        credentials.password
+                        credentials.email as string,
+                        credentials.password as string
                     )
 
                     if (!user) {
@@ -36,14 +70,15 @@ export const { auth, handlers: { GET, POST }, signIn, signOut } = NextAuth({
                     return {
                         id: user.id,
                         email: user.email,
-                        name: user.name,
+                        name: user.name
                     }
                 } catch (error) {
-                    console.error('Authentication error:', error)
+                    console.error('Authorization error:', error)
                     return null
                 }
             }
-        }
-    ],
-    session: { strategy: "jwt" }
-})
+        })
+    ]
+}
+
+export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth(config)

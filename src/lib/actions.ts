@@ -7,18 +7,15 @@ import type { Intervenant } from '@prisma/client'
 export async function getIntervenants(): Promise<Intervenant[]> {
     noStore()
     try {
-        await db.$connect()
-
         const intervenants = await db.intervenant.findMany({
             orderBy: {
                 createdAt: 'desc'
             }
-        })
+        }) ?? []
+
         return intervenants
     } catch (error) {
         console.error('Failed to fetch intervenants:', error)
-        throw new Error('Failed to fetch intervenants')
-    } finally {
-        await db.$disconnect()
+        return []
     }
 } 
