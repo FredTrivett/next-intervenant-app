@@ -1,26 +1,32 @@
+version: '3.8'
 services:
   app:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: next-app
     ports:
       - "3000:3000"
     volumes:
-      - .:/app # Monte le dossier actuel dans le conteneur
-      - /app/node_modules # Évite les conflits avec node_modules de l'hôte
+      - .:/app
+      - /app/node_modules
     environment:
-      NODE_ENV: development
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/auth_db
+    depends_on:
+      - postgres
 
-  db:
+  postgres:
     image: postgres:17
+    container_name: auth-postgres
     ports:
-      - "8080:8080"
+      - "5432:5432"
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: nom_de_la_base
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth_db
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
-  db-data:
+  postgres_data:

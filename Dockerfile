@@ -1,11 +1,11 @@
+# Étapes d'installation des dépendances
 FROM node:18-alpine
 WORKDIR /app
 
-# Copier uniquement les fichiers de configuration pour installer les dépendances
 COPY package*.json ./
 RUN npm install
 
-# Copier le reste des fichiers
+# Copier le dossier src
 COPY . .
 
 # Exposer le port utilisé par Next.js
