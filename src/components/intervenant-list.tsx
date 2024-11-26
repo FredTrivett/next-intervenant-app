@@ -1,6 +1,6 @@
 'use client'
 
-import { Intervenant } from '@prisma/client'
+import { Intervenant } from '@/lib/definitions'
 
 interface IntervenantListProps {
     intervenants: Intervenant[]
@@ -22,7 +22,7 @@ export function IntervenantList({ intervenants }: IntervenantListProps) {
                     key={intervenant.id}
                     className="p-4 rounded-lg border bg-white shadow-sm"
                 >
-                    <h3 className="font-medium text-lg">{intervenant.name}</h3>
+                    <h3 className="font-medium text-lg">{intervenant.firstname}</h3>
                     <p className="text-gray-600">{intervenant.email}</p>
                     {intervenant.availabilities && (
                         <div className="mt-2">
