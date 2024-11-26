@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db'
 import { unstable_noStore as noStore } from 'next/cache'
-import type { Intervenant } from '@prisma/client'
+import type { Intervenant } from '@/lib/definitions'
 
 export async function getIntervenants(): Promise<Intervenant[]> {
     noStore()
@@ -13,7 +13,7 @@ export async function getIntervenants(): Promise<Intervenant[]> {
             }
         }) ?? []
 
-        return intervenants
+        return intervenants as Intervenant[]
     } catch (error) {
         console.error('Failed to fetch intervenants:', error)
         return []
