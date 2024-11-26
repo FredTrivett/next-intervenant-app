@@ -65,7 +65,7 @@ export function IntervenantList({ initialIntervenants, onIntervenantsChange }: I
                     <div className="flex justify-between items-center">
                         <h3 className="font-medium text-lg">{intervenant.firstname}</h3>
 
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1">
                         <EditIntervenantDialog 
                             intervenant={intervenant}
                             onIntervenantUpdated={handleUpdate}
