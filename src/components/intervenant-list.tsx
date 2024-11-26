@@ -13,26 +13,24 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { useState } from 'react'
 import { deleteIntervenant } from '@/lib/actions'
 
 interface IntervenantListProps {
     intervenants: Intervenant[]
+    setIntervenants: React.Dispatch<React.SetStateAction<Intervenant[]>>
 }
 
-export function IntervenantList({ intervenants: initialIntervenants }: IntervenantListProps) {
-    const [intervenants, setIntervenants] = useState(initialIntervenants)
-
+export function IntervenantList({ intervenants, setIntervenants }: IntervenantListProps) {
     const handleDelete = async (id: string) => {
         try {
             await deleteIntervenant(id)
-            setIntervenants(intervenants.filter(int => int.id !== id))
+            setIntervenants(prev => prev.filter(int => int.id !== id))
         } catch (error) {
             console.error('Failed to delete intervenant:', error)
         }
     }
 
-    if (!Array.isArray(intervenants) || intervenants.length === 0) {
+    if (!intervenants || intervenants.length === 0) {
         return (
             <div className="text-center text-gray-500 py-8">
                 No intervenants available.

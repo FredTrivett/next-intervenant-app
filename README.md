@@ -7,11 +7,19 @@ Iteration 3
 
 Iteration 4
 
+Iteration 5
+
+Iteration 6
+
 Login
 
 ## Commands
 
 run prisma studio: docker compose exec app npx prisma studio
+
+docker compose down
+
+docker compose up --build
 
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
