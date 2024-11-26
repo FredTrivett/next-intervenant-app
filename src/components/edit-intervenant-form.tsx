@@ -4,8 +4,7 @@ import { useState } from 'react'
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { v4 as uuidv4 } from 'uuid'
-import { addIntervenant } from '@/lib/actions'
+import { updateIntervenant } from '@/lib/actions'
 import {
     Form,
     FormControl,
@@ -17,29 +16,31 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { AlertDialogCancel } from './ui/alert-dialog'
-import { useRouter } from 'next/navigation'
+import { Intervenant } from '@/lib/definitions'
 
 const formSchema = z.object({
     firstname: z.string().min(2, "First name must be at least 2 characters"),
     lastname: z.string().min(2, "Last name must be at least 2 characters"),
     email: z.string().email("Invalid email address"),
+    expiresAt: z.string(),
 })
 
-interface AddIntervenantFormProps {
-    onSuccess?: (intervenant: any) => void;
+interface EditIntervenantFormProps {
+    intervenant: Intervenant
+    onSuccess: (intervenant: Intervenant) => void
 }
 
-export function AddIntervenantForm({ onSuccess }: AddIntervenantFormProps) {
+export function EditIntervenantForm({ intervenant, onSuccess }: EditIntervenantFormProps) {
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
-    const router = useRouter()
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            firstname: "",
-            lastname: "",
-            email: "",
+            firstname: intervenant.firstname,
+            lastname: intervenant.lastname,
+            email: intervenant.email,
+            expiresAt: new Date(intervenant.expiresAt).toISOString().split('T')[0],
         },
     })
 
@@ -48,31 +49,18 @@ export function AddIntervenantForm({ onSuccess }: AddIntervenantFormProps) {
         setError(null)
 
         try {
-            const key = uuidv4()
-            const createdAt = new Date()
-            const expiresAt = new Date(createdAt)
-            expiresAt.setMonth(expiresAt.getMonth() + 2)
-
-            const result = await addIntervenant({
+            const updatedIntervenant = await updateIntervenant({
+                id: intervenant.id,
                 ...values,
-                key,
-                createdAt,
-                expiresAt,
+                expiresAt: new Date(values.expiresAt),
             })
 
-            if (result) {
-                form.reset()
-                if (onSuccess) {
-                    onSuccess(result)
-                }
-                // Close the dialog
-                document.querySelector<HTMLButtonElement>('[data-dismiss]')?.click()
-            }
+            onSuccess(updatedIntervenant)
+            document.querySelector<HTMLButtonElement>('[data-dismiss]')?.click()
         } catch (error: any) {
-            if (error.message === 'Email already exists') {
+            if (error.message.includes('Unique constraint')) {
                 setError('This email is already registered')
             } else {
-                console.error('Form submission error:', error)
                 setError('Something went wrong. Please try again.')
             }
         } finally {
@@ -90,7 +78,7 @@ export function AddIntervenantForm({ onSuccess }: AddIntervenantFormProps) {
                         <FormItem>
                             <FormLabel>First Name</FormLabel>
                             <FormControl>
-                                <Input placeholder="John" {...field} />
+                                <Input {...field} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -104,7 +92,7 @@ export function AddIntervenantForm({ onSuccess }: AddIntervenantFormProps) {
                         <FormItem>
                             <FormLabel>Last Name</FormLabel>
                             <FormControl>
-                                <Input placeholder="Doe" {...field} />
+                                <Input {...field} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -118,7 +106,21 @@ export function AddIntervenantForm({ onSuccess }: AddIntervenantFormProps) {
                         <FormItem>
                             <FormLabel>Email</FormLabel>
                             <FormControl>
-                                <Input placeholder="john.doe@example.com" type="email" {...field} />
+                                <Input type="email" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="expiresAt"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Expiry Date</FormLabel>
+                            <FormControl>
+                                <Input type="date" {...field} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -132,7 +134,7 @@ export function AddIntervenantForm({ onSuccess }: AddIntervenantFormProps) {
                 <div className="flex justify-end gap-4 pt-4">
                     <AlertDialogCancel data-dismiss>Cancel</AlertDialogCancel>
                     <Button type="submit" disabled={loading}>
-                        {loading ? "Adding..." : "Add Intervenant"}
+                        {loading ? "Saving..." : "Save Changes"}
                     </Button>
                 </div>
             </form>

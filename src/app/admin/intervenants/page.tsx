@@ -10,19 +10,24 @@ export default function IntervenantsPage() {
     const [intervenants, setIntervenants] = useState<Intervenant[]>([])
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        const loadIntervenants = async () => {
-            try {
-                const data = await getIntervenants()
-                setIntervenants(data)
-            } catch (error) {
-                console.error('Failed to load intervenants:', error)
-            } finally {
-                setLoading(false)
-            }
+    const loadIntervenants = async () => {
+        try {
+            const data = await getIntervenants()
+            setIntervenants(data)
+        } catch (error) {
+            console.error('Failed to load intervenants:', error)
+        } finally {
+            setLoading(false)
         }
+    }
+
+    useEffect(() => {
         loadIntervenants()
     }, [])
+
+    const handleIntervenantAdded = async (newIntervenant: Intervenant) => {
+        await loadIntervenants() // Reload all intervenants
+    }
 
     if (loading) {
         return <div>Loading...</div>
@@ -32,14 +37,12 @@ export default function IntervenantsPage() {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold">Intervenants</h1>
-                <AddIntervenantDialog onIntervenantAdded={(newIntervenant) => {
-                    setIntervenants(prev => [newIntervenant, ...prev])
-                }} />
+                <AddIntervenantDialog onIntervenantAdded={handleIntervenantAdded} />
             </div>
 
             <IntervenantList 
-                intervenants={intervenants} 
-                setIntervenants={setIntervenants}
+                initialIntervenants={intervenants} 
+                onIntervenantsChange={loadIntervenants}
             />
         </div>
     )

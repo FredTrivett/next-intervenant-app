@@ -3,7 +3,7 @@
 import { db } from '@/lib/db'
 import { unstable_noStore as noStore } from 'next/cache'
 import type { Intervenant } from '@/lib/definitions'
-import { v4 as uuidv4 } from 'uuid'
+import { revalidatePath } from 'next/cache'
 
 export async function getIntervenants(): Promise<Intervenant[]> {
     noStore()
@@ -12,26 +12,11 @@ export async function getIntervenants(): Promise<Intervenant[]> {
             orderBy: {
                 createdAt: 'desc'
             }
-        }) ?? []
-
-        return intervenants as Intervenant[]
+        })
+        return intervenants
     } catch (error) {
         console.error('Failed to fetch intervenants:', error)
-        return []
-    }
-}
-
-export async function deleteIntervenant(id: string) {
-    try {
-        await db.intervenant.delete({
-            where: {
-                id: id
-            }
-        })
-        return { success: true }
-    } catch (error) {
-        console.error('Failed to delete intervenant:', error)
-        throw new Error('Failed to delete intervenant')
+        throw new Error('Failed to fetch intervenants')
     }
 }
 
@@ -42,7 +27,7 @@ export async function addIntervenant(data: {
     key: string
     createdAt: Date
     expiresAt: Date
-}) {
+}): Promise<Intervenant> {
     try {
         const intervenant = await db.intervenant.create({
             data: {
@@ -50,9 +35,61 @@ export async function addIntervenant(data: {
                 availabilities: {},
             }
         })
+        
+        // Revalidate the intervenants page
+        revalidatePath('/admin/intervenants')
+        
         return intervenant
     } catch (error) {
         console.error('Failed to add intervenant:', error)
-        throw error
+        if (error instanceof Error && error.message.includes('Unique constraint')) {
+            throw new Error('Email already exists')
+        }
+        throw new Error('Failed to add intervenant')
+    }
+}
+
+export async function updateIntervenant(data: {
+    id: string
+    firstname: string
+    lastname: string
+    email: string
+    expiresAt: Date
+}): Promise<Intervenant> {
+    try {
+        const intervenant = await db.intervenant.update({
+            where: { id: data.id },
+            data: {
+                firstname: data.firstname,
+                lastname: data.lastname,
+                email: data.email,
+                expiresAt: data.expiresAt,
+            }
+        })
+        
+        // Revalidate the intervenants page
+        revalidatePath('/admin/intervenants')
+        
+        return intervenant
+    } catch (error) {
+        console.error('Failed to update intervenant:', error)
+        if (error instanceof Error && error.message.includes('Unique constraint')) {
+            throw new Error('Email already exists')
+        }
+        throw new Error('Failed to update intervenant')
+    }
+}
+
+export async function deleteIntervenant(id: string): Promise<void> {
+    try {
+        await db.intervenant.delete({
+            where: { id }
+        })
+        
+        // Revalidate the intervenants page
+        revalidatePath('/admin/intervenants')
+    } catch (error) {
+        console.error('Failed to delete intervenant:', error)
+        throw new Error('Failed to delete intervenant')
     }
 } 
