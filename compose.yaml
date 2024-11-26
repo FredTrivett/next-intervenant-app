@@ -20,8 +20,10 @@ services:
         condition: service_healthy
     command: >
       sh -c "npm install &&
-             npx prisma generate &&
-             npx prisma migrate dev --name init &&
+             rm -rf prisma/migrations &&
+             npx prisma migrate reset --force &&
+             npx prisma migrate dev --name init --create-only &&
+             npx prisma migrate deploy &&
              npm run dev"
 
   postgres:
