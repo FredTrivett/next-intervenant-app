@@ -109,12 +109,17 @@ export function IntervenantList({ initialIntervenants, onIntervenantsChange }: I
                     >
                         <div className="flex justify-between items-center">
                             <div>
-                                <h3 className="font-medium text-lg">
+                                <h3 className="font-medium text-base">
                                     {intervenant.firstname} {intervenant.lastname}
                                 </h3>
                             </div>
 
                             <div className="flex justify-end gap-1">
+                                <EditIntervenantDialog
+                                    intervenant={intervenant}
+                                    onIntervenantUpdated={handleUpdate}
+                                />
+
                                 <Button
                                     variant="ghost"
                                     size="icon"
@@ -124,11 +129,6 @@ export function IntervenantList({ initialIntervenants, onIntervenantsChange }: I
                                 >
                                     <Key className="h-4 w-4" />
                                 </Button>
-
-                                <EditIntervenantDialog
-                                    intervenant={intervenant}
-                                    onIntervenantUpdated={handleUpdate}
-                                />
 
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
@@ -166,8 +166,8 @@ export function IntervenantList({ initialIntervenants, onIntervenantsChange }: I
                         </div>
 
                         <div className="pr-20">
-                            <p className="text-gray-600">{intervenant.email}</p>
-                            <p className="text-sm text-gray-500 mt-1">
+                            <p className="text-gray-600 text-sm">{intervenant.email}</p>
+                            <p className="text-xs text-gray-500 mt-1">
                                 Key: {intervenant.key}
                             </p>
                             <p className="text-sm text-gray-500">
@@ -175,8 +175,8 @@ export function IntervenantList({ initialIntervenants, onIntervenantsChange }: I
                             </p>
                             {intervenant.availabilities && (
                                 <div className="mt-2">
-                                    <h4 className="font-medium">Availabilities:</h4>
-                                    <pre className="mt-1 text-sm text-gray-600 overflow-auto max-h-40">
+                                    <h4 className="font-medium text-sm">Availabilities:</h4>
+                                    <pre className="mt-1 text-xs text-gray-600 overflow-auto max-h-40">
                                         {JSON.stringify(intervenant.availabilities, null, 2)}
                                     </pre>
                                 </div>
