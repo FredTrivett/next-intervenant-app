@@ -154,4 +154,26 @@ export async function regenerateAllKeys(): Promise<void> {
         console.error('Failed to regenerate all keys:', error)
         throw new Error('Failed to regenerate all keys')
     }
+}
+
+export async function validateIntervenantKey(key: string): Promise<Intervenant | null> {
+    try {
+        const intervenant = await db.intervenant.findFirst({
+            where: { key }
+        })
+
+        if (!intervenant) {
+            return null
+        }
+
+        // Check if key has expired
+        if (new Date() > new Date(intervenant.expiresAt)) {
+            return null
+        }
+
+        return intervenant
+    } catch (error) {
+        console.error('Failed to validate key:', error)
+        return null
+    }
 } 

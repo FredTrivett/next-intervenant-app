@@ -17,12 +17,19 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { AlertDialogCancel } from './ui/alert-dialog'
-import { useRouter } from 'next/navigation'
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
 
 const formSchema = z.object({
     firstname: z.string().min(2, "First name must be at least 2 characters"),
     lastname: z.string().min(2, "Last name must be at least 2 characters"),
     email: z.string().email("Invalid email address"),
+    expiresAt: z.date({
+        required_error: "A date of expiration is required",
+    }),
 })
 
 interface AddIntervenantFormProps {
@@ -32,7 +39,10 @@ interface AddIntervenantFormProps {
 export function AddIntervenantForm({ onSuccess }: AddIntervenantFormProps) {
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
-    const router = useRouter()
+
+    // Set default expiry date to 2 months from now
+    const defaultExpiryDate = new Date()
+    defaultExpiryDate.setMonth(defaultExpiryDate.getMonth() + 2)
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -40,6 +50,7 @@ export function AddIntervenantForm({ onSuccess }: AddIntervenantFormProps) {
             firstname: "",
             lastname: "",
             email: "",
+            expiresAt: defaultExpiryDate,
         },
     })
 
@@ -50,8 +61,7 @@ export function AddIntervenantForm({ onSuccess }: AddIntervenantFormProps) {
         try {
             const key = uuidv4()
             const createdAt = new Date()
-            const expiresAt = new Date(createdAt)
-            expiresAt.setMonth(expiresAt.getMonth() + 2)
+            const expiresAt = values.expiresAt
 
             const result = await addIntervenant({
                 ...values,
@@ -120,6 +130,48 @@ export function AddIntervenantForm({ onSuccess }: AddIntervenantFormProps) {
                             <FormControl>
                                 <Input placeholder="john.doe@example.com" type="email" {...field} />
                             </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="expiresAt"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Date de fin</FormLabel>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button
+                                            variant={"outline"}
+                                            className={cn(
+                                                "w-full pl-3 text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {field.value ? (
+                                                format(field.value, "PPP")
+                                            ) : (
+                                                <span>Pick a date</span>
+                                            )}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                    </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={field.value}
+                                        onSelect={field.onChange}
+                                        disabled={(date) =>
+                                            date < new Date() // Disable past dates
+                                        }
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
                             <FormMessage />
                         </FormItem>
                     )}

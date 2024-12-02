@@ -18,6 +18,7 @@ import { deleteIntervenant, regenerateKey, regenerateAllKeys } from '@/lib/actio
 import { EditIntervenantDialog } from './edit-intervenant-dialog'
 import { Button } from './ui/button'
 import { useToast } from "@/hooks/use-toast"
+import { format } from "date-fns"
 
 interface IntervenantListProps {
     initialIntervenants: Intervenant[]
@@ -171,7 +172,7 @@ export function IntervenantList({ initialIntervenants, onIntervenantsChange }: I
                                 Key: {intervenant.key}
                             </p>
                             <p className="text-sm text-gray-500">
-                                Expires: {new Date(intervenant.expiresAt).toLocaleDateString()}
+                                Expires: {format(new Date(intervenant.expiresAt), "dd/MM/yy")}
                             </p>
                             {intervenant.availabilities && (
                                 <div className="mt-2">
