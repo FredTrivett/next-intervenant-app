@@ -13,7 +13,7 @@ export default function NavAdmin() {
 
     return (
         <nav className="space-y-1">
-            <h2 className="text-lg font-semibold mb-4 px-4">IUT mmi</h2>
+            {/* <h2 className="text-lg font-semibold mb-4 px-4">IUT mmi</h2> */}
             <Link
                 className={`${isActive('/admin')} flex items-center px-4 py-2.5 text-sm rounded-lg transition-all duration-200`}
                 href="/admin"

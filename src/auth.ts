@@ -21,13 +21,13 @@ const config: NextAuthConfig = {
         authorized({ auth, request: { nextUrl } }) {
             const isLoggedIn = !!auth?.user
             const isOnLogin = nextUrl.pathname.startsWith('/login')
-            const isOnDashboard = nextUrl.pathname.startsWith('/dashboard')
+            const isOnAdmin = nextUrl.pathname.startsWith('/admin')
 
             if (isOnLogin && isLoggedIn) {
-                return Response.redirect(new URL('/dashboard', nextUrl))
+                return Response.redirect(new URL('/admin', nextUrl))
             }
 
-            if (isOnDashboard && !isLoggedIn) {
+            if (isOnAdmin && !isLoggedIn) {
                 return false
             }
 

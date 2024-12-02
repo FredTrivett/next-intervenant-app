@@ -24,7 +24,7 @@ export default function LogoutButton() {
         <Button
             variant="outline"
             onClick={handleLogout}
-            className="gap-2"
+            className="gap-2 w-full border-0 shadow-none flex justify-start"
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"

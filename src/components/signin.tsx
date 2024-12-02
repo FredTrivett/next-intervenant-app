@@ -1,13 +1,12 @@
 'use client'
 
 import { signIn } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { FormEvent, useState } from 'react'
 import Link from 'next/link'
 
 export default function SignIn() {
     const router = useRouter()
-    const searchParams = useSearchParams()
     const [error, setError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
 
@@ -19,7 +18,6 @@ export default function SignIn() {
         const formData = new FormData(e.currentTarget)
         const email = formData.get('email') as string
         const password = formData.get('password') as string
-        const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
 
         try {
             const result = await signIn('credentials', {
@@ -31,7 +29,7 @@ export default function SignIn() {
             if (result?.error) {
                 setError('Invalid email or password')
             } else {
-                router.push(callbackUrl)
+                router.push('/admin')
                 router.refresh()
             }
         } catch (error) {
