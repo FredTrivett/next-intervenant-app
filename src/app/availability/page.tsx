@@ -1,6 +1,7 @@
 import { validateIntervenantKey } from '@/lib/actions'
 import { notFound } from 'next/navigation'
 import { KeyInput } from '@/components/key-input'
+import { AvailabilityCalendar } from '@/components/availability-calendar'
 
 export default async function AvailabilityPage({
     searchParams,
@@ -61,15 +62,20 @@ export default async function AvailabilityPage({
         )
     }
 
-    // If everything is valid, show the greeting
+    // If everything is valid, show the calendar
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="max-w-md w-full space-y-8 p-8">
-                <div className="text-center">
-                    <h1 className="text-3xl font-bold">
+        <div className="min-h-screen bg-gray-50 p-8">
+            <div className="max-w-7xl mx-auto space-y-8">
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h1 className="text-2xl font-bold mb-2">
                         Bonjour {intervenant.firstname} {intervenant.lastname}
                     </h1>
+                    <p className="text-gray-600">
+                        Manage your availabilities below
+                    </p>
                 </div>
+
+                <AvailabilityCalendar intervenant={intervenant} />
             </div>
         </div>
     )
