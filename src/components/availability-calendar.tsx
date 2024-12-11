@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -11,6 +11,7 @@ import { convertAvailabilitiesToEvents } from '@/lib/utils/date'
 import { updateIntervenantAvailabilities } from '@/lib/actions'
 import { useToast } from "@/hooks/use-toast"
 import { AvailabilityPopup } from './availability-popup'
+import multiMonthPlugin from '@fullcalendar/multimonth'
 
 interface AvailabilityCalendarProps {
     intervenant: Intervenant
@@ -21,6 +22,11 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
     const events = convertAvailabilitiesToEvents(intervenant.availabilities)
     const [selectedEvent, setSelectedEvent] = useState<any>(null)
     const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 })
+    const mainCalendarRef = useRef<any>(null)
+    const miniCalendarRef = useRef<any>(null)
+    const [currentMonth, setCurrentMonth] = useState(
+        new Date().toLocaleString('fr-FR', { month: 'long' })
+    )
 
     const handleEventClick = (info: any) => {
         const rect = info.el.getBoundingClientRect()
@@ -224,52 +230,116 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
         }
     }
 
+    const handleMiniCalendarDateSelect = (arg: any) => {
+        const calendarApi = mainCalendarRef.current.getApi()
+        calendarApi.gotoDate(arg.start)
+    }
+
+    const handlePrevMonth = () => {
+        const calendarApi = miniCalendarRef.current?.getApi()
+        if (calendarApi) {
+            calendarApi.prev()
+        }
+    }
+
+    const handleNextMonth = () => {
+        const calendarApi = miniCalendarRef.current?.getApi()
+        if (calendarApi) {
+            calendarApi.next()
+        }
+    }
+
     return (
-        <div className="bg-white rounded-lg shadow p-4 relative">
-            <FullCalendar
-                plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-                initialView="timeGridWeek"
-                headerToolbar={{
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'timeGridWeek,dayGridMonth'
-                }}
-                locale={frLocale}
-                events={events}
-                weekNumbers={true}
-                weekNumberCalculation="ISO"
-                height="auto"
-                slotMinTime="08:00:00"
-                slotMaxTime="19:30:00"
-                allDaySlot={false}
-                nowIndicator={true}
-                slotDuration="00:30:00"
-                scrollTime="08:00:00"
-                businessHours={{
-                    daysOfWeek: [1, 2, 3, 4, 5],
-                    startTime: '08:00',
-                    endTime: '19:30',
-                }}
-                editable={true}
-                eventResizableFromStart={true}
-                eventStartEditable={true}
-                eventDurationEditable={true}
-                selectable={true}
-                selectMirror={true}
-                eventClick={handleEventClick}
-                eventResize={handleEventResize}
-                eventDrop={handleEventResize}
-                select={handleSelect}
-            />
-            {selectedEvent && (
-                <AvailabilityPopup
-                    event={selectedEvent}
-                    position={popupPosition}
-                    onClose={() => setSelectedEvent(null)}
-                    onDelete={handleDelete}
-                    onUpdate={handleUpdate}
+        <div className="flex gap-4">
+            {/* Mini Calendar */}
+            <div className="w-1/4 max-w-[300px] min-w-[250px] bg-white rounded-lg shadow-sm p-2 border border-gray-100 relative">
+                {/* Navigation Arrows */}
+                <div className="absolute inset-x-0 top-8 flex justify-between px-2 z-10 pointer-events-none">
+                    <button
+                        className="text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-gray-100 rounded-full w-6 h-6 flex items-center justify-center pointer-events-auto"
+                        onClick={handlePrevMonth}
+                    >
+                        ‹
+                    </button>
+                    <button
+                        className="text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-gray-100 rounded-full w-6 h-6 flex items-center justify-center pointer-events-auto"
+                        onClick={handleNextMonth}
+                    >
+                        ›
+                    </button>
+                </div>
+
+                <FullCalendar
+                    ref={miniCalendarRef}
+                    plugins={[multiMonthPlugin, interactionPlugin]}
+                    initialView="multiMonthYear"
+                    headerToolbar={false}  // Remove default header completely
+                    locale={frLocale}
+                    height="auto"
+                    selectable={true}
+                    select={handleMiniCalendarDateSelect}
+                    multiMonthMaxColumns={1}
+                    multiMonthMinWidth={250}
+                    views={{
+                        multiMonthYear: {
+                            duration: { months: 1 },
+                            titleFormat: { month: 'long' },
+                            dayHeaderFormat: { weekday: 'narrow' },
+                            showNonCurrentDates: false,
+                        }
+                    }}
+                    dayCellClassNames="hover:bg-gray-50 cursor-pointer"
                 />
-            )}
+            </div>
+
+            {/* Main Calendar */}
+            <div className="flex-1 bg-white rounded-lg shadow p-4 relative">
+                <FullCalendar
+                    ref={mainCalendarRef}
+                    plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+                    initialView="timeGridWeek"
+                    headerToolbar={{
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'timeGridWeek,dayGridMonth'
+                    }}
+                    locale={frLocale}
+                    events={events}
+                    weekNumbers={true}
+                    weekNumberCalculation="ISO"
+                    height="auto"
+                    slotMinTime="08:00:00"
+                    slotMaxTime="19:30:00"
+                    allDaySlot={false}
+                    nowIndicator={true}
+                    slotDuration="00:30:00"
+                    scrollTime="08:00:00"
+                    businessHours={{
+                        daysOfWeek: [1, 2, 3, 4, 5],
+                        startTime: '08:00',
+                        endTime: '19:30',
+                    }}
+                    editable={true}
+                    eventResizableFromStart={true}
+                    eventStartEditable={true}
+                    eventDurationEditable={true}
+                    selectable={true}
+                    selectMirror={true}
+                    eventClick={handleEventClick}
+                    eventResize={handleEventResize}
+                    eventDrop={handleEventResize}
+                    select={handleSelect}
+                />
+                {selectedEvent && (
+                    <AvailabilityPopup
+                        event={selectedEvent}
+                        position={popupPosition}
+                        onClose={() => setSelectedEvent(null)}
+                        onDelete={handleDelete}
+                        onUpdate={handleUpdate}
+                    />
+                )}
+            </div>
         </div>
     )
 }
