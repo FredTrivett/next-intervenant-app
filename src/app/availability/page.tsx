@@ -1,5 +1,6 @@
 import { validateIntervenantKey } from '@/lib/actions'
 import { notFound } from 'next/navigation'
+import { KeyInput } from '@/components/key-input'
 
 export default async function AvailabilityPage({
     searchParams,
@@ -8,9 +9,23 @@ export default async function AvailabilityPage({
 }) {
     const key = searchParams.key
 
-    // If no key provided or key is not a string, return 404
+    // If no key provided, show the key input form
     if (!key || typeof key !== 'string') {
-        notFound()
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="max-w-md w-full space-y-8 p-8">
+                    <div className="text-center mb-8">
+                        <h2 className="text-2xl font-bold text-gray-900">
+                            Enter Your Access Key
+                        </h2>
+                        <p className="mt-2 text-sm text-gray-600">
+                            Please enter your access key to view your availabilities
+                        </p>
+                    </div>
+                    <KeyInput />
+                </div>
+            </div>
+        )
     }
 
     // Validate the key

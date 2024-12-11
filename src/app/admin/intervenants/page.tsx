@@ -92,7 +92,7 @@ export default function IntervenantsPage() {
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
                                     onClick={handleRegenerateAllKeys}
-                                    className="bg-blue-500 hover:bg-blue-600"
+                                    className="bg-red-500 hover:bg-red-600"
                                     disabled={regenerating}
                                 >
                                     {regenerating ? 'Regenerating...' : 'Regenerate All'}
