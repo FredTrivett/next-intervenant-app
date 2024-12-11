@@ -176,4 +176,24 @@ export async function validateIntervenantKey(key: string): Promise<Intervenant |
         console.error('Failed to validate key:', error)
         return null
     }
+}
+
+export async function updateIntervenantAvailabilities(
+    id: string,
+    availabilities: Record<string, any>
+): Promise<Intervenant> {
+    try {
+        const intervenant = await db.intervenant.update({
+            where: { id },
+            data: {
+                availabilities
+            }
+        })
+
+        revalidatePath('/availability')
+        return intervenant
+    } catch (error) {
+        console.error('Failed to update availabilities:', error)
+        throw new Error('Failed to update availabilities')
+    }
 } 
