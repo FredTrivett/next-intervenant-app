@@ -12,6 +12,8 @@ import { updateIntervenantAvailabilities } from '@/lib/actions'
 import { useToast } from "@/hooks/use-toast"
 import { AvailabilityPopup } from './availability-popup'
 import multiMonthPlugin from '@fullcalendar/multimonth'
+import { Button } from './ui/button'
+import { DefaultAvailabilityDialog } from './default-availability-dialog'
 
 interface AvailabilityCalendarProps {
     intervenant: Intervenant
@@ -27,6 +29,7 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
     const [currentMonth, setCurrentMonth] = useState(
         new Date().toLocaleString('fr-FR', { month: 'long' })
     )
+    const [isDefaultDialogOpen, setIsDefaultDialogOpen] = useState(false)
 
     const handleEventClick = (info: any) => {
         const rect = info.el.getBoundingClientRect()
@@ -249,97 +252,226 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
         }
     }
 
+    const handleDefaultWeekChange = async (info: any) => {
+        try {
+            const newAvailabilities = { ...intervenant.availabilities };
+
+            // Initialize default array if it doesn't exist
+            if (!newAvailabilities.default) {
+                newAvailabilities.default = [];
+            }
+
+            if (info.isDelete) {
+                // Handle deletion
+                const startTime = info.start.toTimeString().slice(0, 5);
+                const endTime = info.end.toTimeString().slice(0, 5);
+                const dayName = getDayName(info.start);
+
+                newAvailabilities.default = newAvailabilities.default.filter(
+                    (slot: any) => !(
+                        slot.days === dayName &&
+                        slot.from === startTime &&
+                        slot.to === endTime
+                    )
+                );
+            } else if (info.isUpdate) {
+                // Handle update
+                const oldStartTime = info.oldEvent.start.toTimeString().slice(0, 5);
+                const oldEndTime = info.oldEvent.end.toTimeString().slice(0, 5);
+                const dayName = getDayName(info.start);
+
+                const slotIndex = newAvailabilities.default.findIndex(
+                    (slot: any) =>
+                        slot.days === dayName &&
+                        slot.from === oldStartTime &&
+                        slot.to === oldEndTime
+                );
+
+                const newSlot = {
+                    days: dayName,
+                    from: info.start.toTimeString().slice(0, 5),
+                    to: info.end.toTimeString().slice(0, 5)
+                };
+
+                if (slotIndex >= 0) {
+                    newAvailabilities.default[slotIndex] = newSlot;
+                }
+            } else {
+                // Handle new slot creation
+                const dayName = getDayName(info.start);
+                const newSlot = {
+                    days: dayName,
+                    from: info.start.toTimeString().slice(0, 5),
+                    to: info.end.toTimeString().slice(0, 5)
+                };
+                newAvailabilities.default.push(newSlot);
+            }
+
+            await updateIntervenantAvailabilities(intervenant.id, newAvailabilities);
+
+            // Instead of reloading the page, update the events in the dialog
+            const defaultEvents = convertAvailabilitiesToEvents({
+                default: newAvailabilities.default
+            });
+
+            // Update the calendar directly
+            const calendarApi = info.view.calendar;
+            calendarApi.removeAllEvents();
+            calendarApi.addEventSource(defaultEvents);
+
+            toast({
+                title: "Success",
+                description: "Default availability updated successfully",
+            });
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to update default availability",
+                variant: "destructive",
+            });
+        }
+    };
+
     return (
-        <div className="flex gap-4">
-            {/* Mini Calendar */}
-            <div className="w-1/4 max-w-[300px] min-w-[250px] bg-white rounded-lg shadow-sm p-2 border border-gray-100 relative">
-                {/* Navigation Arrows */}
-                <div className="absolute inset-x-0 top-8 flex justify-between px-2 z-10 pointer-events-none">
-                    <button
-                        className="text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-gray-100 rounded-full w-6 h-6 flex items-center justify-center pointer-events-auto"
-                        onClick={handlePrevMonth}
-                    >
-                        ‹
-                    </button>
-                    <button
-                        className="text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-gray-100 rounded-full w-6 h-6 flex items-center justify-center pointer-events-auto"
-                        onClick={handleNextMonth}
-                    >
-                        ›
-                    </button>
+        <div className="space-y-4">
+            <div className="flex justify-between items-center">
+                <Button
+                    onClick={() => setIsDefaultDialogOpen(true)}
+                    variant="outline"
+                    className="mb-4"
+                >
+                    My Default Availabilities
+                </Button>
+            </div>
+
+            <div className="flex gap-4">
+                {/* Mini Calendar */}
+                <div className="w-1/4 max-w-[300px] min-w-[250px] bg-white rounded-lg shadow-sm p-2 border border-gray-100 relative">
+                    {/* Navigation Arrows */}
+                    <div className="absolute inset-x-0 top-8 flex justify-between px-2 z-10 pointer-events-none">
+                        <button
+                            className="text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-gray-100 rounded-full w-6 h-6 flex items-center justify-center pointer-events-auto"
+                            onClick={handlePrevMonth}
+                        >
+                            ‹
+                        </button>
+                        <button
+                            className="text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-gray-100 rounded-full w-6 h-6 flex items-center justify-center pointer-events-auto"
+                            onClick={handleNextMonth}
+                        >
+                            ›
+                        </button>
+                    </div>
+
+                    <FullCalendar
+                        ref={miniCalendarRef}
+                        plugins={[multiMonthPlugin, interactionPlugin]}
+                        initialView="multiMonthYear"
+                        headerToolbar={false}  // Remove default header completely
+                        locale={frLocale}
+                        height="auto"
+                        selectable={true}
+                        select={handleMiniCalendarDateSelect}
+                        multiMonthMaxColumns={1}
+                        multiMonthMinWidth={250}
+                        views={{
+                            multiMonthYear: {
+                                duration: { months: 1 },
+                                titleFormat: { month: 'long' },
+                                dayHeaderFormat: { weekday: 'narrow' },
+                                showNonCurrentDates: false,
+                            }
+                        }}
+                        dayCellClassNames="hover:bg-gray-50 cursor-pointer"
+                    />
                 </div>
 
-                <FullCalendar
-                    ref={miniCalendarRef}
-                    plugins={[multiMonthPlugin, interactionPlugin]}
-                    initialView="multiMonthYear"
-                    headerToolbar={false}  // Remove default header completely
-                    locale={frLocale}
-                    height="auto"
-                    selectable={true}
-                    select={handleMiniCalendarDateSelect}
-                    multiMonthMaxColumns={1}
-                    multiMonthMinWidth={250}
-                    views={{
-                        multiMonthYear: {
-                            duration: { months: 1 },
-                            titleFormat: { month: 'long' },
-                            dayHeaderFormat: { weekday: 'narrow' },
-                            showNonCurrentDates: false,
-                        }
-                    }}
-                    dayCellClassNames="hover:bg-gray-50 cursor-pointer"
-                />
+                {/* Main Calendar */}
+                <div className="flex-1 bg-white rounded-lg shadow p-4 relative">
+                    <FullCalendar
+                        ref={mainCalendarRef}
+                        plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+                        initialView="timeGridWeek"
+                        headerToolbar={{
+                            left: 'prev,next today',
+                            center: 'title',
+                            right: 'timeGridWeek,dayGridMonth'
+                        }}
+                        locale={frLocale}
+                        events={events}
+                        weekNumbers={true}
+                        weekNumberCalculation="ISO"
+                        height="auto"
+                        slotMinTime="08:00:00"
+                        slotMaxTime="19:30:00"
+                        allDaySlot={false}
+                        nowIndicator={true}
+                        slotDuration="00:30:00"
+                        scrollTime="08:00:00"
+                        businessHours={{
+                            daysOfWeek: [1, 2, 3, 4, 5],
+                            startTime: '08:00',
+                            endTime: '19:30',
+                        }}
+                        editable={true}
+                        eventResizableFromStart={true}
+                        eventStartEditable={true}
+                        eventDurationEditable={true}
+                        selectable={true}
+                        selectMirror={true}
+                        eventClick={(info) => {
+                            const date = new Date(info.event.start)
+                            const isFirstWeekAugust =
+                                date.getMonth() === 7 &&
+                                Math.floor((date.getDate() - 1) / 7) === 0
+
+                            if (isDefaultDialogOpen && isFirstWeekAugust) {
+                                // Handle default event click
+                                handleEventClick({
+                                    ...info,
+                                    isDefault: true
+                                })
+                            } else {
+                                handleEventClick(info)
+                            }
+                        }}
+                        eventResize={handleEventResize}
+                        eventDrop={handleEventResize}
+                        select={(info) => {
+                            // If showing defaults and it's the first week of August
+                            const date = new Date(info.start)
+                            const isFirstWeekAugust =
+                                date.getMonth() === 7 && // August (0-based)
+                                Math.floor((date.getDate() - 1) / 7) === 0
+
+                            if (isDefaultDialogOpen && isFirstWeekAugust) {
+                                handleDefaultWeekChange(info)
+                            } else {
+                                handleSelect(info)
+                            }
+                        }}
+                    />
+                    {selectedEvent && (
+                        <AvailabilityPopup
+                            event={selectedEvent}
+                            position={popupPosition}
+                            onClose={() => setSelectedEvent(null)}
+                            onDelete={handleDelete}
+                            onUpdate={handleUpdate}
+                        />
+                    )}
+                </div>
             </div>
 
-            {/* Main Calendar */}
-            <div className="flex-1 bg-white rounded-lg shadow p-4 relative">
-                <FullCalendar
-                    ref={mainCalendarRef}
-                    plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
-                    initialView="timeGridWeek"
-                    headerToolbar={{
-                        left: 'prev,next today',
-                        center: 'title',
-                        right: 'timeGridWeek,dayGridMonth'
-                    }}
-                    locale={frLocale}
-                    events={events}
-                    weekNumbers={true}
-                    weekNumberCalculation="ISO"
-                    height="auto"
-                    slotMinTime="08:00:00"
-                    slotMaxTime="19:30:00"
-                    allDaySlot={false}
-                    nowIndicator={true}
-                    slotDuration="00:30:00"
-                    scrollTime="08:00:00"
-                    businessHours={{
-                        daysOfWeek: [1, 2, 3, 4, 5],
-                        startTime: '08:00',
-                        endTime: '19:30',
-                    }}
-                    editable={true}
-                    eventResizableFromStart={true}
-                    eventStartEditable={true}
-                    eventDurationEditable={true}
-                    selectable={true}
-                    selectMirror={true}
-                    eventClick={handleEventClick}
-                    eventResize={handleEventResize}
-                    eventDrop={handleEventResize}
-                    select={handleSelect}
-                />
-                {selectedEvent && (
-                    <AvailabilityPopup
-                        event={selectedEvent}
-                        position={popupPosition}
-                        onClose={() => setSelectedEvent(null)}
-                        onDelete={handleDelete}
-                        onUpdate={handleUpdate}
-                    />
-                )}
-            </div>
+            <DefaultAvailabilityDialog
+                isOpen={isDefaultDialogOpen}
+                onClose={() => setIsDefaultDialogOpen(false)}
+                onUpdateDefault={handleDefaultWeekChange}
+                defaultEvents={intervenant.availabilities?.default ?
+                    convertAvailabilitiesToEvents({ default: intervenant.availabilities.default })
+                    : []
+                }
+            />
         </div>
     )
 }
