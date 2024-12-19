@@ -133,8 +133,21 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
     }
 
     const handleEventResize = async (info: any) => {
+        const date = new Date(info.event.start);
+        const month = date.getMonth();
+
+        // Prevent events in July (6) and August (7)
+        if (month === 6 || month === 7) {
+            info.revert();
+            toast({
+                title: "Période non disponible",
+                description: "Les disponibilités ne peuvent pas être définies pendant les vacances d'été",
+                variant: "destructive",
+            });
+            return;
+        }
+
         try {
-            const date = new Date(info.event.start)
             const weekNumber = getWeekNumber(date)
             const dayName = getDayName(date)
             const weekKey = `S${weekNumber}`
@@ -189,8 +202,22 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
     }
 
     const handleSelect = async (info: any) => {
+        const date = new Date(info.start);
+        const month = date.getMonth();
+
+        // Prevent selection in July (6) and August (7)
+        if (month === 6 || month === 7) {
+            const calendarApi = info.view.calendar;
+            calendarApi.unselect(); // Clear the selection
+            toast({
+                title: "Période non disponible",
+                description: "Les disponibilités ne peuvent pas être définies pendant les vacances d'été",
+                variant: "destructive",
+            });
+            return;
+        }
+
         try {
-            const date = new Date(info.start)
             const weekNumber = getWeekNumber(date)
             const dayName = getDayName(date)
             const weekKey = `S${weekNumber}`
@@ -263,23 +290,49 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
 
             if (info.isDelete) {
                 // Handle deletion
-                const startTime = info.start.toTimeString().slice(0, 5);
-                const endTime = info.end.toTimeString().slice(0, 5);
-                const dayName = getDayName(info.start);
+                const startTime = info.event.startStr.slice(11, 16);
+                const endTime = info.event.endStr.slice(11, 16);
+                const dayName = getDayName(new Date(info.event.start));
 
-                newAvailabilities.default = newAvailabilities.default.filter(
-                    (slot: any) => !(
-                        slot.days === dayName &&
+                console.log('Trying to delete:', {
+                    dayName,
+                    startTime,
+                    endTime,
+                    currentSlots: newAvailabilities.default
+                });
+
+                // More precise filtering to avoid removing wrong slots
+                const beforeLength = newAvailabilities.default.length;
+                newAvailabilities.default = newAvailabilities.default.filter((slot: any) => {
+                    const doesNotMatch = !(
+                        slot.days.toLowerCase() === dayName.toLowerCase() &&
                         slot.from === startTime &&
                         slot.to === endTime
-                    )
-                );
+                    );
+
+                    if (!doesNotMatch) {
+                        console.log('Found matching slot:', slot);
+                    }
+
+                    return doesNotMatch;
+                });
+
+                const afterLength = newAvailabilities.default.length;
+                if (beforeLength === afterLength) {
+                    console.log('No slot was removed. Current slots:', newAvailabilities.default);
+                }
+
+                // Update the calendar immediately
+                const calendarApi = info.view.calendar;
+                info.event.remove();
+
             } else if (info.isUpdate) {
                 // Handle update
                 const oldStartTime = info.oldEvent.start.toTimeString().slice(0, 5);
                 const oldEndTime = info.oldEvent.end.toTimeString().slice(0, 5);
                 const dayName = getDayName(info.start);
 
+                // Find the exact slot to update
                 const slotIndex = newAvailabilities.default.findIndex(
                     (slot: any) =>
                         slot.days === dayName &&
@@ -295,6 +348,14 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
 
                 if (slotIndex >= 0) {
                     newAvailabilities.default[slotIndex] = newSlot;
+
+                    // Update the calendar immediately
+                    const calendarApi = info.view.calendar;
+                    const event = calendarApi.getEventById(info.oldEvent.id);
+                    if (event) {
+                        event.setStart(info.start);
+                        event.setEnd(info.end);
+                    }
                 }
             } else {
                 // Handle new slot creation
@@ -304,32 +365,70 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
                     from: info.start.toTimeString().slice(0, 5),
                     to: info.end.toTimeString().slice(0, 5)
                 };
-                newAvailabilities.default.push(newSlot);
+
+                // Check for duplicate slots
+                const isDuplicate = newAvailabilities.default.some(
+                    (slot: any) =>
+                        slot.days === dayName &&
+                        slot.from === newSlot.from &&
+                        slot.to === newSlot.to
+                );
+
+                if (!isDuplicate) {
+                    newAvailabilities.default.push(newSlot);
+
+                    // Add the event to the calendar immediately
+                    const calendarApi = info.view.calendar;
+                    calendarApi.addEvent({
+                        start: info.start,
+                        end: info.end,
+                        id: `default-${Date.now()}`, // Unique ID for the event
+                        backgroundColor: '#3B82F6',
+                        borderColor: '#2563EB',
+                    });
+                }
             }
 
+            // Save to the database
             await updateIntervenantAvailabilities(intervenant.id, newAvailabilities);
-
-            // Instead of reloading the page, update the events in the dialog
-            const defaultEvents = convertAvailabilitiesToEvents({
-                default: newAvailabilities.default
-            });
-
-            // Update the calendar directly
-            const calendarApi = info.view.calendar;
-            calendarApi.removeAllEvents();
-            calendarApi.addEventSource(defaultEvents);
 
             toast({
                 title: "Success",
                 description: "Default availability updated successfully",
             });
         } catch (error) {
+            console.error('Error updating default availabilities:', error);
             toast({
                 title: "Error",
                 description: "Failed to update default availability",
                 variant: "destructive",
             });
+
+            // Refresh the calendar to ensure consistent state
+            const calendarApi = info.view.calendar;
+            const events = convertAvailabilitiesToEvents({
+                default: intervenant.availabilities.default
+            });
+            calendarApi.removeAllEvents();
+            calendarApi.addEventSource(events);
         }
+    };
+
+    const renderSummerHolidays = (info: any) => {
+        const date = new Date(info.date);
+        const month = date.getMonth();
+
+        // July is 6 and August is 7 (0-based months)
+        if (month === 6 || month === 7) {
+            return {
+                html: `<div class="h-full flex items-center justify-center bg-gray-50">
+                    <div class="text-gray-400 text-sm">
+                        Vacances d'été
+                    </div>
+                </div>`
+            };
+        }
+        return { html: '' }; // Return empty html instead of empty object
     };
 
     return (
@@ -449,6 +548,53 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
                             } else {
                                 handleSelect(info)
                             }
+                        }}
+                        dayCellContent={renderSummerHolidays}
+                        selectConstraint={{
+                            startTime: '08:00:00',
+                            endTime: '19:30:00',
+                            dows: [1, 2, 3, 4, 5], // Monday to Friday
+                        }}
+                        dayCellContent={(info) => {
+                            const date = new Date(info.date);
+                            const month = date.getMonth();
+
+                            // July is 6 and August is 7 (0-based months)
+                            if (month === 6 || month === 7) {
+                                return {
+                                    html: `<div class="h-full flex items-center justify-center bg-gray-100">
+                                        <div class="text-gray-500 text-sm">
+                                            Vacances d'été
+                                        </div>
+                                    </div>`
+                                };
+                            }
+                            return { html: '' };
+                        }}
+                        eventDidMount={(info) => {
+                            const date = new Date(info.event.start);
+                            const month = date.getMonth();
+
+                            // Make events in July and August appear disabled
+                            if (month === 6 || month === 7) {
+                                info.el.style.opacity = '0.5';
+                                info.el.style.cursor = 'not-allowed';
+                            }
+                        }}
+                        eventStartEditable={(info) => {
+                            const date = new Date(info.start);
+                            const month = date.getMonth();
+                            return month !== 6 && month !== 7; // Disable drag in July and August
+                        }}
+                        eventDurationEditable={(info) => {
+                            const date = new Date(info.start);
+                            const month = date.getMonth();
+                            return month !== 6 && month !== 7; // Disable resize in July and August
+                        }}
+                        selectable={(info) => {
+                            const date = new Date(info.start);
+                            const month = date.getMonth();
+                            return month !== 6 && month !== 7; // Disable selection in July and August
                         }}
                     />
                     {selectedEvent && (

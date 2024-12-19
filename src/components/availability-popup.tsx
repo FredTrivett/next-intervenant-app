@@ -20,30 +20,16 @@ export function AvailabilityPopup({
     onUpdate
 }: AvailabilityPopupProps) {
     const popupRef = useRef<HTMLDivElement>(null)
-    const startTime = event.start.toTimeString().slice(0, 5)
-    const endTime = event.end.toTimeString().slice(0, 5)
+
+    // Add safety checks for start and end times
+    const startTime = event?.start ? event.start.toTimeString().slice(0, 5) : '00:00'
+    const endTime = event?.end ? event.end.toTimeString().slice(0, 5) :
+        (event?.start ? new Date(event.start.getTime() + 30 * 60000).toTimeString().slice(0, 5) : '00:30')
 
     useEffect(() => {
         if (!popupRef.current) return
 
-        const popup = popupRef.current
-        const rect = popup.getBoundingClientRect()
-        const viewport = {
-            width: window.innerWidth,
-            height: window.innerHeight
-        }
-
-        if (rect.right > viewport.width) {
-            popup.style.left = `${position.left - rect.width - 10}px`
-        }
-
-        if (rect.bottom > viewport.height) {
-            popup.style.top = `${position.top - rect.height}px`
-        }
-    }, [position])
-
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
+        const handleClickOutside = (event: MouseEvent) => {
             if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
                 onClose()
             }
@@ -56,27 +42,40 @@ export function AvailabilityPopup({
     return (
         <div
             ref={popupRef}
-            className="absolute z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-4 space-y-4 min-w-[200px]"
+            className="absolute z-10 bg-white rounded-lg shadow-lg p-4 border border-gray-200 w-60"
             style={{
-                top: `${position.top}px`,
-                left: `${position.left}px`,
+                top: position.top,
+                left: position.left,
             }}
         >
-            <div className="space-y-2">
-                <div className="flex gap-2 items-center">
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                        Start Time
+                    </label>
                     <Input
                         type="time"
                         defaultValue={startTime}
+                        min="08:00"
+                        max="19:30"
+                        step="1800"
                         onChange={(e) => {
                             if (e.target.value) {
                                 onUpdate(e.target.value, endTime)
                             }
                         }}
                     />
-                    <span>-</span>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                        End Time
+                    </label>
                     <Input
                         type="time"
                         defaultValue={endTime}
+                        min="08:00"
+                        max="19:30"
+                        step="1800"
                         onChange={(e) => {
                             if (e.target.value) {
                                 onUpdate(startTime, e.target.value)
@@ -84,22 +83,22 @@ export function AvailabilityPopup({
                         }}
                     />
                 </div>
-            </div>
-            <div className="flex justify-between">
-                <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={onDelete}
-                >
-                    Delete
-                </Button>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onClose}
-                >
-                    Close
-                </Button>
+                <div className="flex justify-between">
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={onDelete}
+                    >
+                        Delete
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onClose}
+                    >
+                        Close
+                    </Button>
+                </div>
             </div>
         </div>
     )

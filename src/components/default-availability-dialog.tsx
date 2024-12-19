@@ -41,28 +41,51 @@ export function DefaultAvailabilityDialog({
 
     const handleDelete = async () => {
         if (selectedEvent) {
+            const startStr = selectedEvent.start.toISOString();
+            const endStr = selectedEvent.end.toISOString();
+
+            console.log('Deleting event:', {
+                start: startStr,
+                end: endStr,
+                event: selectedEvent
+            });
+
             const info = {
                 start: selectedEvent.start,
                 end: selectedEvent.end,
-                isDelete: true
-            }
-            onUpdateDefault(info)
-            setSelectedEvent(null)
+                isDelete: true,
+                event: {
+                    ...selectedEvent,
+                    startStr,
+                    endStr,
+                    start: selectedEvent.start,
+                    end: selectedEvent.end
+                },
+                view: { calendar: selectedEvent._context.calendarApi }
+            };
+            onUpdateDefault(info);
+            setSelectedEvent(null);
         }
     }
 
     const handleUpdate = async (startTime: string, endTime: string) => {
         if (selectedEvent) {
             const date = new Date(selectedEvent.start)
-            date.setHours(parseInt(startTime.split(':')[0]), parseInt(startTime.split(':')[1]))
-            const endDate = new Date(selectedEvent.start)
-            endDate.setHours(parseInt(endTime.split(':')[0]), parseInt(endTime.split(':')[1]))
+            const [startHour, startMinute] = startTime.split(':')
+            const [endHour, endMinute] = endTime.split(':')
+
+            const newStart = new Date(date)
+            newStart.setHours(parseInt(startHour), parseInt(startMinute))
+
+            const newEnd = new Date(date)
+            newEnd.setHours(parseInt(endHour), parseInt(endMinute))
 
             const info = {
-                start: date,
-                end: endDate,
+                start: newStart,
+                end: newEnd,
                 isUpdate: true,
-                oldEvent: selectedEvent
+                oldEvent: selectedEvent,
+                view: { calendar: selectedEvent._calendar }
             }
             onUpdateDefault(info)
             setSelectedEvent(null)
