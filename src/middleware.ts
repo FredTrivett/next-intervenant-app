@@ -1,17 +1,9 @@
-import { auth } from "@/auth"
-import { NextResponse } from "next/server"
+import { auth } from "./auth"
 
 export default auth((req) => {
-    // If the user is not logged in and trying to access admin routes
-    if (!req.auth && req.nextUrl.pathname.startsWith('/admin')) {
-        return NextResponse.redirect(new URL('/login', req.url))
-    }
-
-    return NextResponse.next()
+    // Middleware code here
 })
 
 export const config = {
-    matcher: [
-        '/admin/:path*',
-    ],
+    matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 }

@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
+import { Intervenant } from "@/lib/definitions"
 
 const formSchema = z.object({
     firstname: z.string().min(2, "First name must be at least 2 characters"),
@@ -33,7 +34,7 @@ const formSchema = z.object({
 })
 
 interface AddIntervenantFormProps {
-    onSuccess?: (intervenant: any) => void;
+    onSuccess?: (intervenant: Intervenant) => void;
 }
 
 export function AddIntervenantForm({ onSuccess }: AddIntervenantFormProps) {
@@ -61,16 +62,18 @@ export function AddIntervenantForm({ onSuccess }: AddIntervenantFormProps) {
         try {
             const key = uuidv4()
             const createdAt = new Date()
-            const expiresAt = values.expiresAt
-
-            const result = await addIntervenant({
-                ...values,
+            const intervenantData = {
+                firstname: values.firstname as string,
+                lastname: values.lastname as string,
+                email: values.email as string,
                 key,
                 createdAt,
-                expiresAt,
-            })
+                expiresAt: values.expiresAt as Date
+            }
 
-            if (result) {
+            const result = await addIntervenant(intervenantData)
+
+            if (result && result.id) {
                 form.reset()
                 if (onSuccess) {
                     onSuccess(result)
@@ -78,8 +81,8 @@ export function AddIntervenantForm({ onSuccess }: AddIntervenantFormProps) {
                 // Close the dialog
                 document.querySelector<HTMLButtonElement>('[data-dismiss]')?.click()
             }
-        } catch (error: any) {
-            if (error.message === 'Email already exists') {
+        } catch (error) {
+            if (error instanceof Error && error.message === 'Email already exists') {
                 setError('This email is already registered')
             } else {
                 console.error('Form submission error:', error)

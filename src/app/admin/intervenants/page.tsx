@@ -41,7 +41,7 @@ export default function IntervenantsPage() {
         loadIntervenants()
     }, [])
 
-    const handleIntervenantAdded = async (newIntervenant: Intervenant) => {
+    const handleIntervenantAdded = async () => {
         await loadIntervenants() // Reload all intervenants
     }
 
@@ -54,7 +54,7 @@ export default function IntervenantsPage() {
                 title: "Success",
                 description: "All keys have been regenerated successfully",
             })
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "Failed to regenerate keys",

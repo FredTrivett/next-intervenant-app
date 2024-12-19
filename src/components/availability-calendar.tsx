@@ -5,6 +5,13 @@ import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
+import {
+    EventClickArg,
+    EventApi,
+    DateSelectArg,
+    EventDropArg,
+    DayCellContentArg
+} from '@fullcalendar/core'
 import frLocale from '@fullcalendar/core/locales/fr'
 import { Intervenant } from '@/lib/definitions'
 import { convertAvailabilitiesToEvents } from '@/lib/utils/date'
@@ -14,24 +21,45 @@ import { AvailabilityPopup } from './availability-popup'
 import multiMonthPlugin from '@fullcalendar/multimonth'
 import { Button } from './ui/button'
 import { DefaultAvailabilityDialog } from './default-availability-dialog'
+import { AvailabilityData } from '@/lib/utils/date'
 
 interface AvailabilityCalendarProps {
     intervenant: Intervenant
 }
 
+interface ExtendedEventInfo extends EventClickArg {
+    isDelete?: boolean;
+    oldEvent?: EventApi;
+    start?: Date;
+    end?: Date;
+}
+
+interface ExtendedEventClickArg extends EventClickArg {
+    isDefault?: boolean;
+}
+
+// Define a common type for both resize and drop events
+type CalendarEventChangeArg = {
+    event: EventApi;
+    oldEvent?: EventApi;
+    revert: () => void;
+    view: {
+        calendar: any;
+    };
+}
+
 export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps) {
     const { toast } = useToast()
-    const events = convertAvailabilitiesToEvents(intervenant.availabilities)
-    const [selectedEvent, setSelectedEvent] = useState<any>(null)
-    const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 })
-    const mainCalendarRef = useRef<any>(null)
-    const miniCalendarRef = useRef<any>(null)
-    const [currentMonth, setCurrentMonth] = useState(
-        new Date().toLocaleString('fr-FR', { month: 'long' })
+    const events = convertAvailabilitiesToEvents(
+        intervenant.availabilities as AvailabilityData
     )
+    const [selectedEvent, setSelectedEvent] = useState<EventApi | null>(null)
+    const [popupPosition, setPopupPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
+    const mainCalendarRef = useRef<FullCalendar>(null)
+    const miniCalendarRef = useRef<FullCalendar>(null)
     const [isDefaultDialogOpen, setIsDefaultDialogOpen] = useState(false)
 
-    const handleEventClick = (info: any) => {
+    const handleEventClick = (info: ExtendedEventClickArg) => {
         const rect = info.el.getBoundingClientRect()
         const viewportHeight = window.innerHeight
 
@@ -64,10 +92,10 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
             const startTime = selectedEvent.start.toTimeString().slice(0, 5)
             const endTime = selectedEvent.end.toTimeString().slice(0, 5)
 
-            const newAvailabilities = { ...intervenant.availabilities }
+            const newAvailabilities = { ...(intervenant.availabilities as AvailabilityData) }
             if (newAvailabilities[weekKey]) {
                 newAvailabilities[weekKey] = newAvailabilities[weekKey].filter(
-                    (slot: any) => !(
+                    (slot: { days: string; from: string; to: string }) => !(
                         slot.days.includes(dayName) &&
                         slot.from === startTime &&
                         slot.to === endTime
@@ -78,11 +106,7 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
             await updateIntervenantAvailabilities(intervenant.id, newAvailabilities)
             selectedEvent.remove()
             setSelectedEvent(null)
-            toast({
-                title: "Success",
-                description: "Availability deleted successfully",
-            })
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "Failed to delete availability",
@@ -91,7 +115,7 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
         }
     }
 
-    const handleUpdate = async (startTime: string, endTime: string) => {
+    const handleUpdate = async (startTime: string, endTime: string): Promise<void> => {
         if (!selectedEvent) return
 
         try {
@@ -100,7 +124,7 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
             const dayName = getDayName(date)
             const weekKey = `S${weekNumber}`
 
-            const newAvailabilities = { ...intervenant.availabilities }
+            const newAvailabilities = { ...(intervenant.availabilities as AvailabilityData) }
             if (!newAvailabilities[weekKey]) {
                 newAvailabilities[weekKey] = []
             }
@@ -112,7 +136,7 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
             }
 
             const existingSlotIndex = newAvailabilities[weekKey].findIndex(
-                (slot: any) => slot.days.includes(dayName)
+                (slot: { days: string }) => slot.days.includes(dayName)
             )
 
             if (existingSlotIndex >= 0) {
@@ -123,7 +147,7 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
 
             await updateIntervenantAvailabilities(intervenant.id, newAvailabilities)
             window.location.reload() // Refresh to show updated event
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "Failed to update availability",
@@ -132,7 +156,7 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
         }
     }
 
-    const handleEventResize = async (info: any) => {
+    const handleEventChange = async (info: CalendarEventChangeArg) => {
         const date = new Date(info.event.start);
         const month = date.getMonth();
 
@@ -160,12 +184,12 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
             const oldStartTime = oldDate ? info.oldEvent.start.toTimeString().slice(0, 5) : null
             const oldEndTime = oldDate ? info.oldEvent.end.toTimeString().slice(0, 5) : null
 
-            const newAvailabilities = { ...intervenant.availabilities }
+            const newAvailabilities = { ...(intervenant.availabilities as AvailabilityData) }
 
             // Remove the old slot if it exists
             if (oldWeekKey && newAvailabilities[oldWeekKey]) {
                 newAvailabilities[oldWeekKey] = newAvailabilities[oldWeekKey].filter(
-                    (slot: any) => !(
+                    (slot: { days: string; from: string; to: string }) => !(
                         slot.days.includes(oldDayName) &&
                         slot.from === oldStartTime &&
                         slot.to === oldEndTime
@@ -191,7 +215,7 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
                 title: "Success",
                 description: "Availability updated successfully",
             })
-        } catch (error) {
+        } catch {
             info.revert()
             toast({
                 title: "Error",
@@ -201,7 +225,7 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
         }
     }
 
-    const handleSelect = async (info: any) => {
+    const handleSelect = async (info: DateSelectArg) => {
         const date = new Date(info.start);
         const month = date.getMonth();
 
@@ -222,7 +246,7 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
             const dayName = getDayName(date)
             const weekKey = `S${weekNumber}`
 
-            const newAvailabilities = { ...intervenant.availabilities }
+            const newAvailabilities = { ...(intervenant.availabilities as AvailabilityData) }
             if (!newAvailabilities[weekKey]) {
                 newAvailabilities[weekKey] = []
             }
@@ -251,7 +275,7 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
                 title: "Success",
                 description: "Availability added successfully",
             })
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "Failed to add availability",
@@ -260,7 +284,7 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
         }
     }
 
-    const handleMiniCalendarDateSelect = (arg: any) => {
+    const handleMiniCalendarDateSelect = (arg: DateSelectArg) => {
         const calendarApi = mainCalendarRef.current.getApi()
         calendarApi.gotoDate(arg.start)
     }
@@ -279,113 +303,115 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
         }
     }
 
-    const handleDefaultWeekChange = async (info: any) => {
+    const handleDefaultWeekChange = async (info: DateSelectArg | EventClickArg) => {
         try {
-            const newAvailabilities = { ...intervenant.availabilities };
+            const newAvailabilities = { ...(intervenant.availabilities as AvailabilityData) };
 
             // Initialize default array if it doesn't exist
             if (!newAvailabilities.default) {
                 newAvailabilities.default = [];
             }
 
-            if (info.isDelete) {
-                // Handle deletion
-                const startTime = info.event.startStr.slice(11, 16);
-                const endTime = info.event.endStr.slice(11, 16);
-                const dayName = getDayName(new Date(info.event.start));
+            const eventInfo = info as ExtendedEventInfo;
+            if ('event' in eventInfo && eventInfo.event) {
+                if (eventInfo.isDelete) {
+                    // Handle deletion
+                    const startTime = new Date(eventInfo.event.start).toTimeString().slice(0, 5);
+                    const endTime = new Date(eventInfo.event.end).toTimeString().slice(0, 5);
+                    const dayName = getDayName(new Date(eventInfo.event.start));
 
-                console.log('Trying to delete:', {
-                    dayName,
-                    startTime,
-                    endTime,
-                    currentSlots: newAvailabilities.default
-                });
-
-                // More precise filtering to avoid removing wrong slots
-                const beforeLength = newAvailabilities.default.length;
-                newAvailabilities.default = newAvailabilities.default.filter((slot: any) => {
-                    const doesNotMatch = !(
-                        slot.days.toLowerCase() === dayName.toLowerCase() &&
-                        slot.from === startTime &&
-                        slot.to === endTime
+                    // More precise filtering to avoid removing wrong slots
+                    newAvailabilities.default = newAvailabilities.default.filter(
+                        (slot: { days: string; from: string; to: string }) => {
+                            const doesNotMatch = !(
+                                slot.days.toLowerCase() === dayName.toLowerCase() &&
+                                slot.from === startTime &&
+                                slot.to === endTime
+                            );
+                            return doesNotMatch;
+                        }
                     );
 
-                    if (!doesNotMatch) {
-                        console.log('Found matching slot:', slot);
-                    }
-
-                    return doesNotMatch;
-                });
-
-                const afterLength = newAvailabilities.default.length;
-                if (beforeLength === afterLength) {
-                    console.log('No slot was removed. Current slots:', newAvailabilities.default);
-                }
-
-                // Update the calendar immediately
-                const calendarApi = info.view.calendar;
-                info.event.remove();
-
-            } else if (info.isUpdate) {
-                // Handle update
-                const oldStartTime = info.oldEvent.start.toTimeString().slice(0, 5);
-                const oldEndTime = info.oldEvent.end.toTimeString().slice(0, 5);
-                const dayName = getDayName(info.start);
-
-                // Find the exact slot to update
-                const slotIndex = newAvailabilities.default.findIndex(
-                    (slot: any) =>
-                        slot.days === dayName &&
-                        slot.from === oldStartTime &&
-                        slot.to === oldEndTime
-                );
-
-                const newSlot = {
-                    days: dayName,
-                    from: info.start.toTimeString().slice(0, 5),
-                    to: info.end.toTimeString().slice(0, 5)
-                };
-
-                if (slotIndex >= 0) {
-                    newAvailabilities.default[slotIndex] = newSlot;
-
                     // Update the calendar immediately
-                    const calendarApi = info.view.calendar;
-                    const event = calendarApi.getEventById(info.oldEvent.id);
-                    if (event) {
-                        event.setStart(info.start);
-                        event.setEnd(info.end);
+                    if (eventInfo.event && eventInfo.view?.calendar) {
+                        eventInfo.event.remove();
+                        // Refresh the events to ensure consistency
+                        const availabilities = intervenant.availabilities as AvailabilityData;
+                        const events = convertAvailabilitiesToEvents({
+                            default: availabilities.default
+                        });
+                        eventInfo.view.calendar.removeAllEvents();
+                        eventInfo.view.calendar.addEventSource(events);
+                    }
+                } else if (eventInfo.oldEvent) {  // This means it's an update (move/resize)
+                    // Handle update
+                    const oldStartTime = eventInfo.oldEvent.start.toTimeString().slice(0, 5);
+                    const oldEndTime = eventInfo.oldEvent.end.toTimeString().slice(0, 5);
+                    const oldDayName = getDayName(new Date(eventInfo.oldEvent.start));
+                    const newDayName = getDayName(
+                        new Date(eventInfo.event?.start || eventInfo.oldEvent?.start || new Date())
+                    );
+
+                    // Find the exact slot to update
+                    const slotIndex = newAvailabilities.default.findIndex(
+                        (slot: { days: string; from: string; to: string }) =>
+                            slot.days === oldDayName &&
+                            slot.from === oldStartTime &&
+                            slot.to === oldEndTime
+                    );
+
+                    const newSlot = {
+                        days: newDayName,
+                        from: eventInfo.event?.start.toTimeString().slice(0, 5) || oldStartTime,
+                        to: eventInfo.event?.end.toTimeString().slice(0, 5) || oldEndTime
+                    };
+
+                    if (slotIndex >= 0) {
+                        newAvailabilities.default[slotIndex] = newSlot;
+
+                        // Update the calendar immediately
+                        if (eventInfo.view?.calendar) {
+                            const availabilities = intervenant.availabilities as AvailabilityData;
+                            const events = convertAvailabilitiesToEvents({
+                                default: availabilities.default
+                            });
+                            eventInfo.view.calendar.removeAllEvents();
+                            eventInfo.view.calendar.addEventSource(events);
+                        }
                     }
                 }
             } else {
                 // Handle new slot creation
-                const dayName = getDayName(info.start);
-                const newSlot = {
-                    days: dayName,
-                    from: info.start.toTimeString().slice(0, 5),
-                    to: info.end.toTimeString().slice(0, 5)
-                };
+                if ('start' in info && 'end' in info) {  // This checks if it's a DateSelectArg
+                    const dayName = getDayName(info.start);
+                    const newSlot = {
+                        days: dayName,
+                        from: info.start.toTimeString().slice(0, 5),
+                        to: info.end.toTimeString().slice(0, 5)
+                    };
 
-                // Check for duplicate slots
-                const isDuplicate = newAvailabilities.default.some(
-                    (slot: any) =>
-                        slot.days === dayName &&
-                        slot.from === newSlot.from &&
-                        slot.to === newSlot.to
-                );
+                    // Check for duplicate slots
+                    const isDuplicate = newAvailabilities.default.some(
+                        (slot: { days: string; from: string; to: string }) =>
+                            slot.days === dayName &&
+                            slot.from === newSlot.from &&
+                            slot.to === newSlot.to
+                    );
 
-                if (!isDuplicate) {
-                    newAvailabilities.default.push(newSlot);
+                    if (!isDuplicate) {
+                        newAvailabilities.default.push(newSlot);
 
-                    // Add the event to the calendar immediately
-                    const calendarApi = info.view.calendar;
-                    calendarApi.addEvent({
-                        start: info.start,
-                        end: info.end,
-                        id: `default-${Date.now()}`, // Unique ID for the event
-                        backgroundColor: '#3B82F6',
-                        borderColor: '#2563EB',
-                    });
+                        // Add the event to the calendar immediately
+                        if (info.view?.calendar) {
+                            info.view.calendar.addEvent({
+                                start: info.start,
+                                end: info.end,
+                                id: `default-${Date.now()}`,
+                                backgroundColor: '#3B82F6',
+                                borderColor: '#2563EB',
+                            });
+                        }
+                    }
                 }
             }
 
@@ -405,16 +431,18 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
             });
 
             // Refresh the calendar to ensure consistent state
-            const calendarApi = info.view.calendar;
-            const events = convertAvailabilitiesToEvents({
-                default: intervenant.availabilities.default
-            });
-            calendarApi.removeAllEvents();
-            calendarApi.addEventSource(events);
+            if (info.view?.calendar) {
+                const availabilities = intervenant.availabilities as AvailabilityData;
+                const events = convertAvailabilitiesToEvents({
+                    default: availabilities.default
+                });
+                info.view.calendar.removeAllEvents();
+                info.view.calendar.addEventSource(events);
+            }
         }
     };
 
-    const renderSummerHolidays = (info: any) => {
+    const renderSummerHolidays = (info: DayCellContentArg) => {
         const date = new Date(info.date);
         const month = date.getMonth();
 
@@ -525,17 +553,16 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
                                 Math.floor((date.getDate() - 1) / 7) === 0
 
                             if (isDefaultDialogOpen && isFirstWeekAugust) {
-                                // Handle default event click
                                 handleEventClick({
                                     ...info,
                                     isDefault: true
-                                })
+                                } as ExtendedEventClickArg)
                             } else {
                                 handleEventClick(info)
                             }
                         }}
-                        eventResize={handleEventResize}
-                        eventDrop={handleEventResize}
+                        eventResize={handleEventChange as any}
+                        eventDrop={handleEventChange as any}
                         select={(info) => {
                             // If showing defaults and it's the first week of August
                             const date = new Date(info.start)
@@ -555,22 +582,6 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
                             endTime: '19:30:00',
                             dows: [1, 2, 3, 4, 5], // Monday to Friday
                         }}
-                        dayCellContent={(info) => {
-                            const date = new Date(info.date);
-                            const month = date.getMonth();
-
-                            // July is 6 and August is 7 (0-based months)
-                            if (month === 6 || month === 7) {
-                                return {
-                                    html: `<div class="h-full flex items-center justify-center bg-gray-100">
-                                        <div class="text-gray-500 text-sm">
-                                            Vacances d'été
-                                        </div>
-                                    </div>`
-                                };
-                            }
-                            return { html: '' };
-                        }}
                         eventDidMount={(info) => {
                             const date = new Date(info.event.start);
                             const month = date.getMonth();
@@ -580,21 +591,6 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
                                 info.el.style.opacity = '0.5';
                                 info.el.style.cursor = 'not-allowed';
                             }
-                        }}
-                        eventStartEditable={(info) => {
-                            const date = new Date(info.start);
-                            const month = date.getMonth();
-                            return month !== 6 && month !== 7; // Disable drag in July and August
-                        }}
-                        eventDurationEditable={(info) => {
-                            const date = new Date(info.start);
-                            const month = date.getMonth();
-                            return month !== 6 && month !== 7; // Disable resize in July and August
-                        }}
-                        selectable={(info) => {
-                            const date = new Date(info.start);
-                            const month = date.getMonth();
-                            return month !== 6 && month !== 7; // Disable selection in July and August
                         }}
                     />
                     {selectedEvent && (
@@ -613,8 +609,10 @@ export function AvailabilityCalendar({ intervenant }: AvailabilityCalendarProps)
                 isOpen={isDefaultDialogOpen}
                 onClose={() => setIsDefaultDialogOpen(false)}
                 onUpdateDefault={handleDefaultWeekChange}
-                defaultEvents={intervenant.availabilities?.default ?
-                    convertAvailabilitiesToEvents({ default: intervenant.availabilities.default })
+                defaultEvents={(intervenant.availabilities as AvailabilityData)?.default
+                    ? convertAvailabilitiesToEvents({
+                        default: (intervenant.availabilities as AvailabilityData).default
+                    })
                     : []
                 }
             />

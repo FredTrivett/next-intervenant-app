@@ -7,12 +7,19 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import frLocale from '@fullcalendar/core/locales/fr'
 import { AvailabilityPopup } from './availability-popup'
+import { EventApi, EventClickArg, Calendar } from '@fullcalendar/core'
 
 interface DefaultAvailabilityDialogProps {
     isOpen: boolean
     onClose: () => void
     onUpdateDefault: (info: any) => void
-    defaultEvents: any[]
+    defaultEvents: {
+        title: string;
+        start: string;
+        end: string;
+        backgroundColor: string;
+        borderColor: string;
+    }[]
 }
 
 export function DefaultAvailabilityDialog({
@@ -21,14 +28,14 @@ export function DefaultAvailabilityDialog({
     onUpdateDefault,
     defaultEvents
 }: DefaultAvailabilityDialogProps) {
-    const [selectedEvent, setSelectedEvent] = useState<any>(null)
+    const [selectedEvent, setSelectedEvent] = useState<EventApi | null>(null)
     const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 })
 
-    const handleEventClick = (info: any) => {
+    const handleEventClick = (info: EventClickArg) => {
         const rect = info.el.getBoundingClientRect()
         const dialogRect = info.el.closest('.dialog-content').getBoundingClientRect()
 
-        let top = rect.top - dialogRect.top + (rect.height / 2) - 100
+        const top = rect.top - dialogRect.top + (rect.height / 2) - 100
         let left = rect.left - dialogRect.left - 220
 
         if (left < 0) {
@@ -41,27 +48,15 @@ export function DefaultAvailabilityDialog({
 
     const handleDelete = async () => {
         if (selectedEvent) {
-            const startStr = selectedEvent.start.toISOString();
-            const endStr = selectedEvent.end.toISOString();
-
-            console.log('Deleting event:', {
-                start: startStr,
-                end: endStr,
-                event: selectedEvent
-            });
+            const calendar = (selectedEvent.source as any)?.calendar as Calendar;
+            const view = calendar?.view;
 
             const info = {
                 start: selectedEvent.start,
                 end: selectedEvent.end,
                 isDelete: true,
-                event: {
-                    ...selectedEvent,
-                    startStr,
-                    endStr,
-                    start: selectedEvent.start,
-                    end: selectedEvent.end
-                },
-                view: { calendar: selectedEvent._context.calendarApi }
+                event: selectedEvent,
+                view: view || { calendar }
             };
             onUpdateDefault(info);
             setSelectedEvent(null);
@@ -80,14 +75,21 @@ export function DefaultAvailabilityDialog({
             const newEnd = new Date(date)
             newEnd.setHours(parseInt(endHour), parseInt(endMinute))
 
-            const info = {
+            const calendar = (selectedEvent.source as any)?.calendar as Calendar;
+            const view = calendar?.view;
+
+            onUpdateDefault({
                 start: newStart,
                 end: newEnd,
                 isUpdate: true,
                 oldEvent: selectedEvent,
-                view: { calendar: selectedEvent._calendar }
-            }
-            onUpdateDefault(info)
+                event: {
+                    ...selectedEvent,
+                    start: newStart,
+                    end: newEnd
+                },
+                view: view || { calendar }
+            })
             setSelectedEvent(null)
         }
     }
@@ -140,12 +142,14 @@ export function DefaultAvailabilityDialog({
                         selectMirror={true}
                         select={onUpdateDefault}
                         eventClick={handleEventClick}
+                        eventDrop={(info) => onUpdateDefault({ ...info, isUpdate: true })}
+                        eventResize={(info) => onUpdateDefault({ ...info, isUpdate: true })}
                         dayHeaderFormat={{ weekday: 'long' }}
                         hiddenDays={[0, 6]}
                         views={{
                             timeGridWeek: {
                                 dayHeaderFormat: { weekday: 'long' },
-                                dayCellContent: ({ date }) => {
+                                dayCellContent: () => {
                                     return { html: '' }
                                 }
                             }

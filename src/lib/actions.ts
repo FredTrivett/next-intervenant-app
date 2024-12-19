@@ -5,6 +5,8 @@ import { unstable_noStore as noStore } from 'next/cache'
 import type { Intervenant } from '@/lib/definitions'
 import { revalidatePath } from 'next/cache'
 import { v4 as uuidv4 } from 'uuid'
+import { TimeSlot } from './utils/date'
+import { Prisma } from '@prisma/client'
 
 export async function getIntervenants(): Promise<Intervenant[]> {
     noStore()
@@ -180,7 +182,7 @@ export async function validateIntervenantKey(key: string): Promise<Intervenant |
 
 export async function updateIntervenantAvailabilities(
     id: string,
-    availabilities: Record<string, any>
+    availabilities: Prisma.JsonValue
 ): Promise<Intervenant> {
     try {
         const intervenant = await db.intervenant.update({

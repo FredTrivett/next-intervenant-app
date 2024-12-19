@@ -3,9 +3,10 @@
 import { useEffect, useRef } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { EventApi } from '@fullcalendar/core'
 
 interface AvailabilityPopupProps {
-    event: any
+    event: EventApi
     position: { top: number; left: number }
     onClose: () => void
     onDelete: () => void

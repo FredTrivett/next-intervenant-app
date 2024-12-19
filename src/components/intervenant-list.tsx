@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Intervenant } from '@/lib/definitions'
-import { Trash2, Edit, RefreshCw, Key } from 'lucide-react'
+import { Trash2, Key } from 'lucide-react'
 import {
     AlertDialog,
     AlertDialogAction,
@@ -39,30 +39,10 @@ export function IntervenantList({ initialIntervenants, onIntervenantsChange }: I
                 title: "Success",
                 description: "Key regenerated successfully",
             })
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "Failed to regenerate key",
-                variant: "destructive",
-            })
-        } finally {
-            setLoading(null)
-        }
-    }
-
-    const handleRegenerateAllKeys = async () => {
-        try {
-            setLoading('all')
-            await regenerateAllKeys()
-            await onIntervenantsChange()
-            toast({
-                title: "Success",
-                description: "All keys regenerated successfully",
-            })
-        } catch (error) {
-            toast({
-                title: "Error",
-                description: "Failed to regenerate keys",
                 variant: "destructive",
             })
         } finally {
@@ -74,16 +54,16 @@ export function IntervenantList({ initialIntervenants, onIntervenantsChange }: I
         try {
             await deleteIntervenant(id)
             await onIntervenantsChange()
-        } catch (error) {
-            console.error('Failed to delete intervenant:', error)
+        } catch {
+            console.error('Failed to delete intervenant')
         }
     }
 
-    const handleUpdate = async (updated: Intervenant) => {
+    const handleUpdate = async () => {
         try {
             await onIntervenantsChange()
-        } catch (error) {
-            console.error('Failed to update list:', error)
+        } catch {
+            console.error('Failed to update list')
         }
     }
 

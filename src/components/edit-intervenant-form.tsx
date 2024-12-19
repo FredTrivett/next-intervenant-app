@@ -51,16 +51,24 @@ export function EditIntervenantForm({ intervenant, onSuccess }: EditIntervenantF
         try {
             const updatedIntervenant = await updateIntervenant({
                 id: intervenant.id,
-                ...values,
+                firstname: values.firstname,
+                lastname: values.lastname,
+                email: values.email,
                 expiresAt: new Date(values.expiresAt),
             })
 
-            onSuccess(updatedIntervenant)
-            document.querySelector<HTMLButtonElement>('[data-dismiss]')?.click()
-        } catch (error: any) {
-            if (error.message.includes('Unique constraint')) {
+            if (updatedIntervenant) {
+                form.reset()
+                if (onSuccess) {
+                    onSuccess(updatedIntervenant)
+                }
+                document.querySelector<HTMLButtonElement>('[data-dismiss]')?.click()
+            }
+        } catch (error) {
+            if (error instanceof Error && error.message === 'Email already exists') {
                 setError('This email is already registered')
             } else {
+                console.error('Form submission error:', error)
                 setError('Something went wrong. Please try again.')
             }
         } finally {

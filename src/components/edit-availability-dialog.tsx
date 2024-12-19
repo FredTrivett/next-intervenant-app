@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { updateIntervenantAvailabilities } from '@/lib/actions'
+import { EventApi } from '@fullcalendar/core'
+import { AvailabilityData, TimeSlot } from '@/lib/utils/date'
+import { z } from 'zod'
 
 interface EditAvailabilityDialogProps {
     isOpen: boolean
     onClose: () => void
-    event: any
-    intervenant: any
+    event: EventApi
+    intervenant: { id: string; availabilities: Record<string, unknown> }
     onUpdate: () => void
 }
 
@@ -40,7 +43,7 @@ export function EditAvailabilityDialog({
 
             // Create updated availabilities object
             const weekKey = `S${weekNumber}`
-            const newAvailabilities = { ...intervenant.availabilities }
+            const newAvailabilities: AvailabilityData = { ...intervenant.availabilities } as AvailabilityData
 
             if (!newAvailabilities[weekKey]) {
                 newAvailabilities[weekKey] = []
@@ -48,7 +51,7 @@ export function EditAvailabilityDialog({
 
             // Update or add the time slot
             const existingSlotIndex = newAvailabilities[weekKey].findIndex(
-                (slot: any) => slot.days.includes(dayName)
+                (slot: TimeSlot) => slot.days.includes(dayName)
             )
 
             const newSlot = {
@@ -73,7 +76,7 @@ export function EditAvailabilityDialog({
 
             onUpdate()
             onClose()
-        } catch (error) {
+        } catch {
             toast({
                 title: "Error",
                 description: "Failed to update availability",

@@ -1,6 +1,5 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
-import Link from "next/link"
 import NavAdmin from "@/components/nav-admin"
 import LogoutButton from "@/components/logout-button"
 

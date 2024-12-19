@@ -1,13 +1,19 @@
+import { Metadata } from 'next'
 import { validateIntervenantKey } from '@/lib/actions'
 import { notFound } from 'next/navigation'
 import { KeyInput } from '@/components/key-input'
 import { AvailabilityCalendar } from '@/components/availability-calendar'
 
-export default async function AvailabilityPage({
-    searchParams,
-}: {
-    searchParams: { [key: string]: string | string[] | undefined }
-}) {
+export const metadata: Metadata = {
+    title: 'Availability',
+    description: 'Manage your availabilities',
+}
+
+type PageProps = {
+    searchParams: any
+}
+
+export default async function AvailabilityPage({ searchParams }: PageProps) {
     const key = searchParams.key
 
     // If no key provided, show the key input form

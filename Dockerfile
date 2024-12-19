@@ -1,20 +1,22 @@
-FROM node:18-alpine
+# Build stage
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
 
+# Production stage
+FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Install necessary tools
-RUN apk add --no-cache openssl
+ENV NODE_ENV=production
 
-# Install dependencies first
-COPY package*.json ./
-RUN npm install
-
-# Copy prisma files
-COPY prisma ./prisma/
-
-# Copy the rest of the application
-COPY . .
+# Copy necessary files from builder
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+CMD ["node", "server.js"]

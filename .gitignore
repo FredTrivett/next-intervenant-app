@@ -47,3 +47,8 @@ node_modules
 
 # env.local
 .env.local
+
+# Add these lines
+.env
+.env.*
+certbot/

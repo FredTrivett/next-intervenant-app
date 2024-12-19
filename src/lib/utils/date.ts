@@ -1,10 +1,10 @@
-type TimeSlot = {
+export type TimeSlot = {
     days: string
     from: string
     to: string
 }
 
-type AvailabilityData = {
+export type AvailabilityData = {
     default?: TimeSlot[]
     [key: `S${number}`]: TimeSlot[]
 }
@@ -32,7 +32,14 @@ export function getWeekDates(weekNumber: number, year: number = new Date().getFu
 export function convertAvailabilitiesToEvents(availabilities: AvailabilityData | null) {
     if (!availabilities) return []
 
-    const events: any[] = []
+    const events: {
+        title: string;
+        start: string;
+        end: string;
+        backgroundColor: string;
+        borderColor: string;
+    }[] = []
+
     const currentYear = new Date().getFullYear()
     const defaultSlots = availabilities.default || []
 
@@ -48,7 +55,6 @@ export function convertAvailabilitiesToEvents(availabilities: AvailabilityData |
     yearsToShow.forEach(year => {
         // Process all weeks (1-52) for each year
         Array.from({ length: 52 }, (_, i) => i + 1).forEach(weekNumber => {
-            const weekKey = `S${weekNumber}`
             const weekStart = getWeekDates(weekNumber, year)
 
             // Check if this is an exception week
@@ -56,7 +62,7 @@ export function convertAvailabilitiesToEvents(availabilities: AvailabilityData |
 
             // Get specific slots for this week if they exist
             const weekSlots = isExceptionWeek
-                ? availabilities[`S${weekNumber}` as keyof AvailabilityData] as TimeSlot[]
+                ? (availabilities[`S${weekNumber}` as keyof AvailabilityData] as TimeSlot[])
                 : defaultSlots
 
             // For each day of the week
@@ -65,7 +71,7 @@ export function convertAvailabilitiesToEvents(availabilities: AvailabilityData |
                 date.setDate(date.getDate() + ((dayOffset - 1 + 7) % 7))
 
                 // Find slots for this day
-                const daySlots = weekSlots.filter(slot =>
+                const daySlots = weekSlots.filter((slot: TimeSlot) =>
                     slot.days.split(',').map(d => d.trim().toLowerCase()).includes(dayName)
                 )
 
