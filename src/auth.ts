@@ -78,7 +78,8 @@ const config: NextAuthConfig = {
                 }
             }
         })
-    ]
+    ],
+    trustHost: true,
 }
 
 export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth(config)

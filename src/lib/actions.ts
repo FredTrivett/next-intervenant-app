@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { v4 as uuidv4 } from 'uuid'
 import { TimeSlot } from './utils/date'
 import { Prisma } from '@prisma/client'
+import type { JsonValue } from '@prisma/client/runtime/library'
 
 export async function getIntervenants(): Promise<Intervenant[]> {
     noStore()
@@ -182,7 +183,7 @@ export async function validateIntervenantKey(key: string): Promise<Intervenant |
 
 export async function updateIntervenantAvailabilities(
     id: string,
-    availabilities: Prisma.JsonValue
+    availabilities: JsonValue
 ): Promise<Intervenant> {
     try {
         const intervenant = await db.intervenant.update({
